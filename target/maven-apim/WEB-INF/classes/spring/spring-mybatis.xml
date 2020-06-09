@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xmlns:context="http://www.springframework.org/schema/context"
+       xmlns:tx="http://www.springframework.org/schema/tx"
+       xmlns:aop="http://www.springframework.org/schema/aop"
+       xsi:schemaLocation="http://www.springframework.org/schema/beans
+                        http://www.springframework.org/schema/beans/spring-beans-4.0.xsd
+                        http://www.springframework.org/schema/context
+                        http://www.springframework.org/schema/context/spring-context-4.0.xsd
+                        http://www.springframework.org/schema/aop
+                        http://www.springframework.org/schema/aop/spring-aop.xsd
+                        http://www.springframework.org/schema/tx
+                        http://www.springframework.org/schema/tx/spring-tx-4.0.xsd">
+    <!--自动扫描-->
+    <context:component-scan base-package="com.bwxa.service"/>
+    <!--引入properties文件-->
+    <bean id="placeholderConfigurer" class="org.springframework.beans.factory.config.PropertyPlaceholderConfigurer">
+        <property name="location" value="classpath:jdbc.properties"/>
+    </bean>
+    <!--配置数据源-->
+    <bean id="dataSource" class="org.apache.commons.dbcp.BasicDataSource">
+        <property name="driverClassName" value="${driver}"/>
+        <property name="url" value="${url}"/>
+        <property name="username" value="${username}"/>
+        <property name="password" value="${password}"/>
+        <property name="initialSize" value="${initialSize}"/>
+        <property name="maxActive" value="${maxActive}"/>
+        <property name="maxIdle" value="${maxIdle}"/>
+        <property name="minIdle" value="${minIdle}"/>
+        <property name="maxWait" value="${maxWait}"/>
+    </bean>
+    <!--配置sqlsession工厂-->
+    <!-- spring和MyBatis完美整合，不需要mybatis的配置映射文件 -->
+<!--    <bean id="sqlSessionFactory" class="org.mybatis.spring.SqlSessionFactoryBean">-->
+<!--        <property name="dataSource" ref="dataSource"/>-->
+<!--        <property name="mapperLocations" value="classpath:mapper/"/>-->
+<!--    </bean>-->
+    <!--配置Dao  spring会自动查找下面的类-->
+    <bean class="org.mybatis.spring.mapper.MapperScannerConfigurer">
+        <property name="basePackage" value="com.bwxa.dao"/>
+        <property name="sqlSessionFactoryBeanName" value="sqlSessionFactory"/>
+    </bean>
+
+    <!--声明式事务管理-->
+    <bean id="transactionManager" class="org.springframework.jdbc.datasource.DataSourceTransactionManager">
+        <property name="dataSource" ref="dataSource"/>
+    </bean>
+    <!--启用事务注解   <tx:annotation-driven/> 不用配置下面的，这不过要在service的每个方法添加@Transactional-->
+    <!--配置通知-->
+    <tx:advice id="txAdvice" transaction-manager="transactionManager">
+        <tx:attributes>
+            <!--查询方法的事务-->
+            <tx:method name="find*" read-only="true" isolation="DEFAULT"/>
+            <!--增删改方法的事务；如果满足条件一，不会走第二个-->
+            <tx:method name="*"/>
+        </tx:attributes>
+    </tx:advice>
+
+    <!--配置事务切入点, 把事务切入点和事务属性关联起来-->
+    <aop:config>
+        <!--第一个*代表返回值，第二*代表service下子包，第三个*代表方法名，“（..）”代表方法参数-->
+        <aop:pointcut id="deptPointCut" expression="execution(* com.bwxa.service.*.*(..))"/>
+        <aop:advisor advice-ref="txAdvice" pointcut-ref="deptPointCut"/>
+    </aop:config>
+
+    <!--开启aspectj代理，并暴露aop代理到ThreadLocal-->
+    <!--调用ths本身方法不走代理机制，这个时候可以通过配置解决这个问题-->
+    <!--这样调用  ((BookShopServiceImpl)AopContext.currentProxy()).update(username, isbn);-->
+    <aop:aspectj-autoproxy expose-proxy="true"/>
+</beans>
