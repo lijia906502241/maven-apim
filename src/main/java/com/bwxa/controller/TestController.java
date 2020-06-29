@@ -9,6 +9,7 @@ public class TestController {
     @RequestMapping(value = "test")
     public String test(){
         System.out.println("测试");
+        System.out.println("-----------");
         return "login";
     }
 }
